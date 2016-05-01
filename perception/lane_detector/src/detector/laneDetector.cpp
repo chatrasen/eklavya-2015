@@ -64,9 +64,33 @@ void LaneDetector::interpret() {
         cv::imshow(ipt_output_window, result);
         cv::waitKey(wait_time);
     }
+    cv::imshow("ipt_output_window", result);
     cvtColor(result,result,CV_BGR2HSV);
 
-    result = grassRemoval(result);
+    //cv::Mat dest;
+    //cv::resize(result,dest,cv::Size(),0.5,0.5,CV_INTER_LINEAR );
+    //result=dest;
+    cv::Mat redchan(result.rows,result.cols,CV_8UC1);
+    for(int i=0;i<result.rows;i++)
+    {
+      for(int j=0;j<result.cols;j++)
+      {
+        redchan.at<uchar>(i,j)=result.at<cv::Vec3b>(i,j)[2];
+      }
+    }
+    redchan = grassRemoval(redchan);
+    for(int i=0;i<result.rows;i++)
+    {
+      for(int j=0;j<result.cols;j++)
+      {
+        if(redchan.at<uchar>(i,j)==0)
+        {
+          result.at<cv::Vec3b>(i,j)[0]=0;
+          result.at<cv::Vec3b>(i,j)[1]=0;
+          result.at<cv::Vec3b>(i,j)[2]=0;
+        }
+      }
+    }
     if (time_functions > 0) {
         gettimeofday(&tval_after, NULL);
         time_elapsed = tval_after.tv_sec + (tval_after.tv_usec / 1000000.0) - (tval_before.tv_sec + (tval_before.tv_usec / 1000000.0));
@@ -105,7 +129,9 @@ void LaneDetector::interpret() {
     if (time_functions > 0) {
         gettimeofday(&tval_before, NULL);
     }
+
     result = getLaneBinary(result);
+
     if (time_functions > 0) {
         gettimeofday(&tval_after, NULL);
         time_elapsed = tval_after.tv_sec + (tval_after.tv_usec / 1000000.0) - (tval_before.tv_sec + (tval_before.tv_usec / 1000000.0));
@@ -114,10 +140,10 @@ void LaneDetector::interpret() {
             std::cout << "GetLaneBinary FPS : " << 1. / time_elapsed << std::endl;
         }
     }
-    cv::Mat result2(200,200,CV_8UC1);
-    cv::resize(result, result2, result2.size(), 0,0,CV_INTER_LINEAR );
+    //cv::Mat result2(200,200,CV_8UC1);
+    //cv::resize(result, result2, result2.size(), 0,0,CV_INTER_LINEAR );
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud=generatecloud(result2);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud=generatecloud(result);
     cloud_pub.publish(cloud);
 
     if (debug_mode > 0) {
@@ -133,8 +159,8 @@ void LaneDetector::interpret() {
         }
     }
     //cv::waitKey(0);
-    cv::imshow(lane_binary_output, result);
-    publishLanes(result2);
+    cv::imshow("lane_binary_output", result);
+    publishLanes(result);
 }
 
 void LaneDetector::setupComms() {
